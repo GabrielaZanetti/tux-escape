@@ -266,7 +266,7 @@ def show_gate_explanation(screen, clock, gate_name, gate_color):
         "NAND": (
             "Porta NAND",
             "x NAND x = 1",
-            "A porta NAND libera saida 0 somente quando as duas entradas estao em 1.",
+            "A porta NAND libera saida 1 somente quando uma ou nenhuma entrada esta em 1.",
         ),
     }
 
