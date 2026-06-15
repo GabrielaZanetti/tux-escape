@@ -265,8 +265,8 @@ def show_gate_explanation(screen, clock, gate_name, gate_color):
         ),
         "NAND": (
             "Porta NAND",
-            "x NAND x = ¬x",
-            "A porta NAND é a negação da porta AND, produzindo saída 0 somente quando todas as entradas estão em 1.",
+            "x NAND x = 1",
+            "A porta NAND libera saida 0 somente quando as duas entradas estao em 1.",
         ),
     }
 
@@ -572,6 +572,12 @@ def show_portal_phase(screen, clock, phase_label, gates_info, player_animator, p
     pure_black = (0, 0, 0)
     pure_white = (255, 255, 255)
 
+    # Carrega o fundo cyberpunk
+    _bg_path = os.path.join(BASE_DIR, "background_cyberpunk.png")
+    _bg_surface = None
+    if os.path.exists(_bg_path):
+        _bg_surface = pygame.image.load(_bg_path).convert()
+
     player_speed = 4
     running = True
     while running:
@@ -622,7 +628,10 @@ def show_portal_phase(screen, clock, phase_label, gates_info, player_animator, p
                 player_pos = [gate["rect"].centerx, gate["rect"].bottom + 100]
                 break
 
-        screen.fill(pure_black)
+        if _bg_surface:
+            screen.blit(_bg_surface, (0, 0))
+        else:
+            screen.fill(pure_black)
 
         title = font_big.render(f"{phase_label} - ESCOLHA UMA PORTA", True, pure_white)
         screen.blit(title, title.get_rect(center=(screen.get_width() // 2, 20)))

@@ -37,4 +37,4 @@ Ensinar portas lógicas: AND, OR, NOT, XOR, NAND, NOR através de jogos interati
 - Gabriela: Programação
 - Yago: Interface gráfica
 - Laisa: Exercícios
-- Eduarda: Testes# tux-escape
+- Eduarda: Testes
