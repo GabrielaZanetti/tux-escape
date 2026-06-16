@@ -3,6 +3,7 @@ import sys
 import os
 import math
 from terminal_animation import show_terminal_briefing
+from ending_escape import show_ending
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -236,6 +237,9 @@ def show_portal_map(screen, clock):
     player_pos = [120, 600]
 
     show_portal_phase3(screen, clock, player_animator, player_pos)
+
+    # ── FINAL: Tux escapa do computador ────────────────────────────────────────
+    show_ending(screen, clock)
 
 
 def show_gate_explanation(screen, clock, gate_name, gate_color):
