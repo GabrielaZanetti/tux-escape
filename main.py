@@ -2,6 +2,7 @@ import pygame
 import sys
 import os
 import math
+from terminal_animation import show_terminal_briefing
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -196,6 +197,8 @@ def show_portal_map(screen, clock):
     player_animator = PlayerAnimator()
     player_pos = [500, 600]
 
+    show_terminal_briefing(screen, clock, 1)          # ← linha nova
+
     completed, player_pos = show_portal_phase(
         screen,
         clock,
@@ -208,6 +211,8 @@ def show_portal_map(screen, clock):
         return
 
     animate_phase_transition(screen, clock, player_animator, player_pos, "FASE 1", "FASE 2")
+
+    show_terminal_briefing(screen, clock, 2)          # ← linha nova
 
     player_animator = PlayerAnimator()
     player_pos = [120, 600]
@@ -224,6 +229,8 @@ def show_portal_map(screen, clock):
         return
 
     animate_phase_transition(screen, clock, player_animator, player_pos, "FASE 2", "FASE 3")
+
+    show_terminal_briefing(screen, clock, 3)          # ← linha nova
 
     player_animator = PlayerAnimator()
     player_pos = [120, 600]
