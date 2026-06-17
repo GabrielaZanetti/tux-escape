@@ -25,7 +25,7 @@ class PlayerAnimator:
     
     def load_animations(self):
         """Carrega todas as imagens de animação."""
-        fallback_path = os.path.join(BASE_DIR, "./images/tux.png")
+        fallback_path = os.path.join(BASE_DIR, "images", "tux.png")
         fallback_img = None
         if os.path.exists(fallback_path):
             fallback_img = pygame.image.load(fallback_path).convert_alpha()
@@ -99,7 +99,7 @@ class PlayerAnimator:
         return pygame.Rect(pos[0], pos[1], int(40 * self.scale), int(52 * self.scale))
 
 def load_intro_surface():
-    path_png = os.path.join(BASE_DIR, "./images/intro.png")
+    path_png = os.path.join(BASE_DIR, "images", "intro.png")
     try:
         if os.path.exists(path_png):
             img = pygame.image.load(path_png)
@@ -110,6 +110,63 @@ def load_intro_surface():
     return None
 
 
+def load_menu_background():
+    path_png = os.path.join(BASE_DIR, "images", "background_menu.png")
+    try:
+        if os.path.exists(path_png):
+            img = pygame.image.load(path_png)
+            return img.convert()
+    except Exception:
+        pass
+    return None
+
+
+def make_radial_glow(radius, color, max_alpha=70, steps=20):
+    """Pre-renderiza um halo radial suave (camadas concentricas, sem dependencia de blur)."""
+    surf = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
+    for i in range(steps, 0, -1):
+        r = max(1, int(radius * i / steps))
+        t = i / steps
+        alpha = int(max_alpha * (1 - t) ** 1.6)
+        pygame.draw.circle(surf, color + (alpha,), (radius, radius), r)
+    return surf
+
+
+def make_glow_text(font, text, color, glow_color, glow_passes=7, max_offset=16):
+    """Pre-renderiza um texto com camadas de brilho neon.
+    Retorna (glow_surf, base_surf); glow_surf deve ser desenhado atras de base_surf,
+    centralizados no mesmo ponto."""
+    base = font.render(text, True, color)
+    pad = max_offset * 2 + 10
+    glow_surf = pygame.Surface((base.get_width() + pad * 2, base.get_height() + pad * 2), pygame.SRCALPHA)
+    glow_text = font.render(text, True, glow_color)
+    for i in range(glow_passes, 0, -1):
+        offset = int(max_offset * (i / glow_passes))
+        alpha = int(46 * (1 - i / (glow_passes + 1)) + 14)
+        w = max(1, glow_text.get_width() + offset)
+        h = max(1, glow_text.get_height() + offset)
+        scaled = pygame.transform.smoothscale(glow_text, (w, h))
+        scaled.set_alpha(alpha)
+        glow_surf.blit(scaled, scaled.get_rect(center=(glow_surf.get_width() // 2, glow_surf.get_height() // 2)))
+    return glow_surf, base
+
+
+def make_glow_panel(size, color, radius=18, glow_passes=6, max_offset=14):
+    """Pre-renderiza o brilho de um painel/botao arredondado."""
+    w, h = size
+    pad = max_offset * 2 + 6
+    glow_surf = pygame.Surface((w + pad * 2, h + pad * 2), pygame.SRCALPHA)
+    base_shape = pygame.Surface((w, h), pygame.SRCALPHA)
+    pygame.draw.rect(base_shape, color, (0, 0, w, h), border_radius=radius)
+    for i in range(glow_passes, 0, -1):
+        offset = int(max_offset * (i / glow_passes))
+        alpha = int(40 * (1 - i / (glow_passes + 1)) + 10)
+        scaled = pygame.transform.smoothscale(base_shape, (w + offset, h + offset))
+        scaled.set_alpha(alpha)
+        glow_surf.blit(scaled, scaled.get_rect(center=(glow_surf.get_width() // 2, glow_surf.get_height() // 2)))
+    return glow_surf
+
+
 def main_menu():
     pygame.init()
     SCREEN_WIDTH = 1000
@@ -117,82 +174,166 @@ def main_menu():
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
     pygame.display.set_caption("Tux Escape - Menu")
 
-    DARK_BG = (18, 18, 26)
     WHITE = (255, 255, 255)
-    SOFT_WHITE = (240, 240, 240)
-    RED = (220, 30, 30)
-    GREEN = (30, 180, 60)
+    SOFT_WHITE = (225, 235, 230)
+    RED = (235, 60, 60)
+    GREEN = (40, 215, 110)
+    GREEN_DARK = (12, 70, 38)
     BLACK = (0, 0, 0)
+    GREY_GREEN = (120, 160, 140)
 
-    font_large = pygame.font.Font(None, 64)
-    font = pygame.font.Font(None, 36)
-    small = pygame.font.Font(None, 24)
+    title_text = "TUX ESCAPE"
+    subtitle_text = "Um virus assumiu o sistema. Resolva os circuitos e ajude o Tux a escapar."
+    button_text = "INICIAR"
+
+    font_title = pygame.font.Font(None, 96)
+    font_title.set_bold(True)
+    font_subtitle = pygame.font.Font(None, 28)
+    font_button = pygame.font.Font(None, 40)
+    font_button.set_bold(True)
+    font_footer = pygame.font.Font(None, 22)
+    font_tag = pygame.font.Font(None, 20)
 
     intro_surface = load_intro_surface()
+    bg_surface = load_menu_background()
+
+    # Pre-render do titulo com brilho neon (vermelho perigo)
+    title_glow, title_base = make_glow_text(font_title, title_text, WHITE, RED, glow_passes=8, max_offset=22)
+    subtitle_base = font_subtitle.render(subtitle_text, True, SOFT_WHITE)
+
+    # Pre-render do brilho do botao (verde)
+    btn_w, btn_h = 280, 76
+    btn_glow = make_glow_panel((btn_w, btn_h), GREEN, radius=16, glow_passes=7, max_offset=18)
+
+    # Escala da arte do personagem
+    char_img = None
+    char_base_size = None
+    if intro_surface:
+        iw, ih = intro_surface.get_size()
+        target_h = 300
+        scale = target_h / ih
+        char_base_size = (int(iw * scale), int(ih * scale))
+        char_img = pygame.transform.smoothscale(intro_surface, char_base_size)
+
+    char_halo = make_radial_glow(170, GREEN, max_alpha=65, steps=22)
 
     clock = pygame.time.Clock()
     running = True
+    start_game = False
+    t0 = pygame.time.get_ticks()
+
+    # Layout vertical
+    title_y = 96
+    subtitle_y = 156
+    char_center_y = 360
+    button_y = 552
+    footer_y = SCREEN_HEIGHT - 34
+
+    btn_rect = pygame.Rect(0, 0, btn_w, btn_h)
+    btn_rect.center = (SCREEN_WIDTH // 2, button_y)
 
     while running:
-        screen.fill(DARK_BG)
-
+        elapsed = pygame.time.get_ticks() - t0
+        pulse = (math.sin(elapsed / 480.0) + 1.0) / 2.0  # 0..1 suave
         mouse_pos = pygame.mouse.get_pos()
-
-        # Top margin and available sizes
-        top_margin = 40
-        max_img_w = int(SCREEN_WIDTH * 0.75)
-        max_img_h = 300
-        current_y = top_margin
-
-        # Intro image / placeholder
-        if intro_surface:
-            iw, ih = intro_surface.get_size()
-            scale = min(max_img_w / iw, max_img_h / ih, 1)
-            new_w = int(iw * scale)
-            new_h = int(ih * scale)
-            img = pygame.transform.smoothscale(intro_surface, (new_w, new_h))
-            img_rect = img.get_rect(center=(SCREEN_WIDTH // 2, current_y + new_h // 2))
-            screen.blit(img, img_rect)
-            current_y += new_h + 20
-        else:
-            ph_w = max_img_w
-            ph_h = 200
-            ph_rect = pygame.Rect((SCREEN_WIDTH - ph_w) // 2, current_y, ph_w, ph_h)
-            pygame.draw.rect(screen, (60, 60, 70), ph_rect, border_radius=8)
-            txt_ph = small.render("(./images/intro.png não encontrado)", True, SOFT_WHITE)
-            screen.blit(txt_ph, txt_ph.get_rect(center=ph_rect.center))
-            current_y += ph_h + 20
-
-        # Texto vermelho centralizado
-        red_text = font_large.render("INICIAR O JOGO", True, RED)
-        red_rect = red_text.get_rect(center=(SCREEN_WIDTH // 2, current_y + 24))
-        screen.blit(red_text, red_rect)
-        current_y += 80
-
-        # Botão verde estilo 'tec'
-        btn_w = 260
-        btn_h = 72
-        btn_rect = pygame.Rect(SCREEN_WIDTH // 2 - btn_w // 2, current_y, btn_w, btn_h)
         hover = btn_rect.collidepoint(mouse_pos)
-        base = GREEN
-        color = tuple(min(255, c + 30) for c in base) if hover else base
-        pygame.draw.rect(screen, color, btn_rect, border_radius=12)
-        pygame.draw.rect(screen, BLACK, btn_rect, 3, border_radius=12)
-        label = font.render("Iniciar", True, BLACK)
-        screen.blit(label, label.get_rect(center=btn_rect.center))
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-            if event.type == pygame.MOUSEBUTTONDOWN:
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if btn_rect.collidepoint(event.pos):
-                    show_intro_chase(screen, clock)
-                    show_intro_dialog(screen, clock)        
-                    run_game(screen, clock)                
+                    start_game = True
                     running = False
+            if event.type == pygame.KEYDOWN:
+                if event.key in (pygame.K_RETURN, pygame.K_SPACE):
+                    start_game = True
+                    running = False
+                if event.key == pygame.K_ESCAPE:
+                    running = False
+
+        # ── Fundo ────────────────────────────────────────────────
+        if bg_surface:
+            screen.blit(bg_surface, (0, 0))
+        else:
+            screen.fill((10, 14, 12))
+
+        # ── Titulo com brilho pulsante ───────────────────────────
+        glow_alpha = 150 + int(80 * pulse)
+        glow_copy = title_glow.copy()
+        glow_copy.set_alpha(glow_alpha)
+        title_pos = (SCREEN_WIDTH // 2, title_y)
+        screen.blit(glow_copy, glow_copy.get_rect(center=title_pos))
+        screen.blit(title_base, title_base.get_rect(center=title_pos))
+
+        subtitle_pos = subtitle_base.get_rect(center=(SCREEN_WIDTH // 2, subtitle_y))
+        screen.blit(subtitle_base, subtitle_pos)
+
+        # ── Personagem com halo suave ──────────────────────────────
+        if char_img:
+            halo_copy = char_halo.copy()
+            halo_copy.set_alpha(150 + int(80 * pulse))
+            screen.blit(halo_copy, halo_copy.get_rect(center=(SCREEN_WIDTH // 2, char_center_y)))
+            char_rect = char_img.get_rect(center=(SCREEN_WIDTH // 2, char_center_y))
+            screen.blit(char_img, char_rect)
+        else:
+            ph_rect = pygame.Rect(0, 0, 360, 240)
+            ph_rect.center = (SCREEN_WIDTH // 2, char_center_y)
+            pygame.draw.rect(screen, (30, 40, 36), ph_rect, border_radius=12)
+            pygame.draw.rect(screen, GREEN_DARK, ph_rect, 2, border_radius=12)
+            txt_ph = font_footer.render("(intro.png nao encontrado)", True, SOFT_WHITE)
+            screen.blit(txt_ph, txt_ph.get_rect(center=ph_rect.center))
+
+        # ── Botao iniciar ───────────────────────────────────────
+        scale = 1.04 if hover else 1.0
+        glow_alpha_btn = 230 if hover else 140 + int(60 * pulse)
+        glow_b = btn_glow.copy()
+        glow_b.set_alpha(glow_alpha_btn)
+        screen.blit(glow_b, glow_b.get_rect(center=btn_rect.center))
+
+        draw_w, draw_h = int(btn_w * scale), int(btn_h * scale)
+        draw_rect = pygame.Rect(0, 0, draw_w, draw_h)
+        draw_rect.center = btn_rect.center
+
+        fill_top = (60, 235, 130) if hover else GREEN
+        fill_bottom = (20, 130, 70) if hover else (16, 110, 60)
+        btn_surf = pygame.Surface((draw_w, draw_h), pygame.SRCALPHA)
+        for yy in range(draw_h):
+            t = yy / max(1, draw_h - 1)
+            col = tuple(int(fill_top[i] + (fill_bottom[i] - fill_top[i]) * t) for i in range(3))
+            pygame.draw.line(btn_surf, col + (255,), (0, yy), (draw_w, yy))
+        mask = pygame.Surface((draw_w, draw_h), pygame.SRCALPHA)
+        pygame.draw.rect(mask, (255, 255, 255, 255), (0, 0, draw_w, draw_h), border_radius=16)
+        btn_surf_masked = pygame.Surface((draw_w, draw_h), pygame.SRCALPHA)
+        btn_surf_masked.blit(btn_surf, (0, 0))
+        btn_surf_masked.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MIN)
+        screen.blit(btn_surf_masked, draw_rect)
+        pygame.draw.rect(screen, WHITE, draw_rect, 3, border_radius=16)
+
+        play_pts = [
+            (draw_rect.centerx - 70, draw_rect.centery - 11),
+            (draw_rect.centerx - 70, draw_rect.centery + 11),
+            (draw_rect.centerx - 52, draw_rect.centery),
+        ]
+        pygame.draw.polygon(screen, BLACK, play_pts)
+        label = font_button.render(button_text, True, BLACK)
+        screen.blit(label, label.get_rect(center=(draw_rect.centerx + 14, draw_rect.centery)))
+
+        # ── Rodape com instrucoes ───────────────────────────────
+        footer_text = "WASD / Setas para mover   •   ESC para voltar a qualquer momento"
+        footer_surf = font_footer.render(footer_text, True, GREY_GREEN)
+        screen.blit(footer_surf, footer_surf.get_rect(center=(SCREEN_WIDTH // 2, footer_y)))
+
+        tag_surf = font_tag.render("Logica Digital • v1.0", True, (90, 120, 105))
+        screen.blit(tag_surf, (16, SCREEN_HEIGHT - 26))
 
         pygame.display.flip()
         clock.tick(60)
+
+    if start_game:
+        show_intro_chase(screen, clock)
+        show_intro_dialog(screen, clock)
+        run_game(screen, clock)
 
     pygame.quit()
     sys.exit()
@@ -211,6 +352,7 @@ def show_portal_map(screen, clock):
         build_portal_gates(1),
         player_animator,
         player_pos,
+        bg_filename="background_fase1.png",
     )
     if not completed:
         return
@@ -229,6 +371,7 @@ def show_portal_map(screen, clock):
         build_portal_gates(2),
         player_animator,
         player_pos,
+        bg_filename="background_fase2.png",
     )
     if not completed:
         return
@@ -582,7 +725,7 @@ def animate_phase_transition(screen, clock, player_animator, start_pos, from_pha
         clock.tick(60)
 
 
-def show_portal_phase(screen, clock, phase_label, gates_info, player_animator, player_pos):
+def show_portal_phase(screen, clock, phase_label, gates_info, player_animator, player_pos, bg_filename="background_cyberpunk.png"):
     font_big = pygame.font.Font(None, 64)
     font_small = pygame.font.Font(None, 32)
     font_tiny = pygame.font.Font(None, 20)
@@ -590,8 +733,8 @@ def show_portal_phase(screen, clock, phase_label, gates_info, player_animator, p
     pure_black = (0, 0, 0)
     pure_white = (255, 255, 255)
 
-    # Carrega o fundo cyberpunk
-    _bg_path = os.path.join(BASE_DIR, "./images/background_cyberpunk.png")
+    # Carrega o fundo cyberpunk especifico da fase
+    _bg_path = os.path.join(BASE_DIR, "images", bg_filename)
     _bg_surface = None
     if os.path.exists(_bg_path):
         _bg_surface = pygame.image.load(_bg_path).convert()
@@ -964,6 +1107,12 @@ def show_portal_phase3(screen, clock, player_animator, player_pos):
     pure_black = (0, 0, 0)
     pure_white = (255, 255, 255)
 
+    # Carrega o fundo cyberpunk da fase 3 (nucleo final)
+    _bg_path = os.path.join(BASE_DIR, "images", "background_fase3.png")
+    _bg_surface = None
+    if os.path.exists(_bg_path):
+        _bg_surface = pygame.image.load(_bg_path).convert()
+
     gate = {"rect": pygame.Rect(350, 120, 300, 280), "color": (0, 180, 220), "done": False}
     player_speed = 4
 
@@ -1005,7 +1154,10 @@ def show_portal_phase3(screen, clock, player_animator, player_pos):
                 gate["done"] = True
             player_pos = [gate["rect"].centerx, gate["rect"].bottom + 100]
 
-        screen.fill(pure_black)
+        if _bg_surface:
+            screen.blit(_bg_surface, (0, 0))
+        else:
+            screen.fill(pure_black)
 
         title = font_big.render("FASE 3 — CIRCUITO FINAL", True, (0, 200, 220))
         screen.blit(title, title.get_rect(center=(screen.get_width() // 2, 22)))
