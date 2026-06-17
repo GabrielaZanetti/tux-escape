@@ -4,6 +4,7 @@ import os
 import math
 from terminal_animation import show_terminal_briefing
 from ending_escape import show_ending
+from intro_chase import show_intro_chase
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -184,7 +185,8 @@ def main_menu():
                 running = False
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if btn_rect.collidepoint(event.pos):
-                    show_portal_map(screen, clock)
+                    show_intro_chase(screen, clock)        
+                    run_game(screen, clock)                
                     running = False
 
         pygame.display.flip()
