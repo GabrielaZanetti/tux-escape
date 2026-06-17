@@ -25,7 +25,7 @@ class PlayerAnimator:
     
     def load_animations(self):
         """Carrega todas as imagens de animação."""
-        fallback_path = os.path.join(BASE_DIR, "tux.png")
+        fallback_path = os.path.join(BASE_DIR, "./images/tux.png")
         fallback_img = None
         if os.path.exists(fallback_path):
             fallback_img = pygame.image.load(fallback_path).convert_alpha()
@@ -99,7 +99,7 @@ class PlayerAnimator:
         return pygame.Rect(pos[0], pos[1], int(40 * self.scale), int(52 * self.scale))
 
 def load_intro_surface():
-    path_png = os.path.join(BASE_DIR, "intro.png")
+    path_png = os.path.join(BASE_DIR, "./images/intro.png")
     try:
         if os.path.exists(path_png):
             img = pygame.image.load(path_png)
@@ -159,7 +159,7 @@ def main_menu():
             ph_h = 200
             ph_rect = pygame.Rect((SCREEN_WIDTH - ph_w) // 2, current_y, ph_w, ph_h)
             pygame.draw.rect(screen, (60, 60, 70), ph_rect, border_radius=8)
-            txt_ph = small.render("(intro.png não encontrado)", True, SOFT_WHITE)
+            txt_ph = small.render("(./images/intro.png não encontrado)", True, SOFT_WHITE)
             screen.blit(txt_ph, txt_ph.get_rect(center=ph_rect.center))
             current_y += ph_h + 20
 
@@ -591,7 +591,7 @@ def show_portal_phase(screen, clock, phase_label, gates_info, player_animator, p
     pure_white = (255, 255, 255)
 
     # Carrega o fundo cyberpunk
-    _bg_path = os.path.join(BASE_DIR, "background_cyberpunk.png")
+    _bg_path = os.path.join(BASE_DIR, "./images/background_cyberpunk.png")
     _bg_surface = None
     if os.path.exists(_bg_path):
         _bg_surface = pygame.image.load(_bg_path).convert()
@@ -1044,16 +1044,6 @@ def run_game(screen, clock):
     player_speed    = 4
     phase_1_door    = pygame.Rect(60, screen.get_height() - 180, 120, 150)
 
-    dialog_duration_ms = 3000
-    first_start = 0
-    first_end = first_start + dialog_duration_ms
-    second_start = first_end
-    second_end = second_start + dialog_duration_ms
-
-    # Pisca de forma suave entre #f1f2f3 e #212121.
-    blink_period_ms = 2200
-    start_ticks = pygame.time.get_ticks()
-
     in_game = True
     while in_game:
         for event in pygame.event.get():
@@ -1063,24 +1053,20 @@ def run_game(screen, clock):
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 in_game = False
 
-        elapsed = pygame.time.get_ticks() - start_ticks
-        dialog_phase = elapsed < second_end
-        instruction_visible = elapsed >= second_end
+        instruction_visible = True
 
         keys = pygame.key.get_pressed()
         dx = 0
         dy = 0
 
-        # Enquanto os dialogos aparecem, personagem nao anda.
-        if not dialog_phase:
-            if keys[pygame.K_LEFT] or keys[pygame.K_a]:
-                dx -= player_speed
-            if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
-                dx += player_speed
-            if keys[pygame.K_UP] or keys[pygame.K_w]:
-                dy -= player_speed
-            if keys[pygame.K_DOWN] or keys[pygame.K_s]:
-                dy += player_speed
+        if keys[pygame.K_LEFT] or keys[pygame.K_a]:
+            dx -= player_speed
+        if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
+            dx += player_speed
+        if keys[pygame.K_UP] or keys[pygame.K_w]:
+            dy -= player_speed
+        if keys[pygame.K_DOWN] or keys[pygame.K_s]:
+            dy += player_speed
 
         # Balao de instrucoes no canto superior direito.
         instruction_rect = pygame.Rect(screen.get_width() - 360, 20, 340, 90)
@@ -1105,41 +1091,13 @@ def run_game(screen, clock):
         next_pos[1] = max(20, min(screen.get_height() - 52, next_pos[1]))
         player_pos = next_pos
 
-        if dialog_phase:
-            phase = (elapsed % blink_period_ms) / blink_period_ms
-            wave = (math.sin(phase * 2 * math.pi) + 1.0) / 2.0
-            bg = (
-                int(soft_black[0] + (soft_white[0] - soft_black[0]) * wave),
-                int(soft_black[1] + (soft_white[1] - soft_black[1]) * wave),
-                int(soft_black[2] + (soft_white[2] - soft_black[2]) * wave),
-            )
-            fg = pure_black if wave > 0.5 else pure_white
-        else:
-            # Ao finalizar os dialogos, fundo fica preto total.
-            bg = pure_black
-            fg = pure_white
-
-        screen.fill(bg)
+        screen.fill(pure_black)
 
         # Desenha o personagem animado
         player_img = player_animator.get_current_image()
         if player_img:
             player_rect = player_animator.get_rect(player_pos)
             screen.blit(player_img, player_rect)
-
-        if first_start <= elapsed < first_end:
-            bubble_1 = pygame.Rect(screen.get_width() - 560, 20, 540, 90)
-            pygame.draw.rect(screen, bubble_color, bubble_1, border_radius=14)
-            pygame.draw.rect(screen, bubble_border, bubble_1, 2, border_radius=14)
-            txt_1 = small_font.render("O virus atacou o sistema e desligou as lizes", True, text_color)
-            screen.blit(txt_1, txt_1.get_rect(center=bubble_1.center))
-
-        elif second_start <= elapsed < second_end:
-            bubble_2 = pygame.Rect(screen.get_width() - 560, 20, 540, 90)
-            pygame.draw.rect(screen, bubble_color, bubble_2, border_radius=14)
-            pygame.draw.rect(screen, bubble_border, bubble_2, 2, border_radius=14)
-            txt_2 = small_font.render("Ajuste as missoes para fugir", True, text_color)
-            screen.blit(txt_2, txt_2.get_rect(center=bubble_2.center))
 
         if instruction_visible:
             pygame.draw.rect(screen, bubble_color, instruction_rect, border_radius=14)
